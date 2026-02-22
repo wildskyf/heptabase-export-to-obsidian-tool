@@ -87,6 +87,315 @@ function findCardInstance(uid) {
 }
 
 /**
+ * Sanitize filename by replacing illegal characters
+ */
+function sanitizeFilename(filename) {
+    // Replace illegal filesystem characters with safe alternatives
+    const replacements = {
+        '/': '÷',
+        '\\': '⧵',
+        ':': '∶',
+        '*': '✱',
+        '?': '？',
+        '"': '"',
+        '<': '‹',
+        '>': '›',
+        '|': '｜'
+    };
+
+    let sanitized = filename;
+    for (const [char, replacement] of Object.entries(replacements)) {
+        sanitized = sanitized.replace(new RegExp('\\' + char, 'g'), replacement);
+    }
+
+    // Trim whitespace and limit length
+    sanitized = sanitized.trim();
+    if (sanitized.length > 200) {
+        sanitized = sanitized.substring(0, 200);
+    }
+
+    return sanitized || 'Untitled';
+}
+
+/**
+ * Convert ProseMirror JSON to Markdown
+ */
+function prosemirrorToMarkdown(content) {
+    // If content is null or undefined, return empty string
+    if (!content) {
+        return '';
+    }
+
+    // If content is a string, try to parse it as JSON
+    if (typeof content === 'string') {
+        try {
+            content = JSON.parse(content);
+        } catch (e) {
+            // If parsing fails, return the string as-is
+            console.warn('Failed to parse content as JSON:', e);
+            return content;
+        }
+    }
+
+    // Process ProseMirror document
+    if (content.type === 'doc' && content.content) {
+        return content.content.map(node => processNode(node)).join('\n\n');
+    }
+
+    return '';
+}
+
+/**
+ * Process a single ProseMirror node
+ */
+function processNode(node) {
+    if (!node) return '';
+
+    switch (node.type) {
+        case 'heading':
+            const level = node.attrs?.level || 1;
+            const headingText = processInlineContent(node.content);
+            return '#'.repeat(level) + ' ' + headingText;
+
+        case 'paragraph':
+            return processInlineContent(node.content);
+
+        case 'bulletList':
+            return node.content?.map(item => processBulletItem(item)).join('\n') || '';
+
+        case 'orderedList':
+            return node.content?.map((item, index) => processOrderedItem(item, index + 1)).join('\n') || '';
+
+        case 'listItem':
+            return processInlineContent(node.content);
+
+        // Heptabase-specific: bullet_list_item as direct node type
+        case 'bullet_list_item':
+            if (!node.content) return '';
+            const bulletContent = node.content.map(n => {
+                if (n.type === 'paragraph') {
+                    return processInlineContent(n.content);
+                }
+                return processNode(n);
+            }).join('\n  ');
+            return '- ' + bulletContent;
+
+        // Heptabase-specific: ordered_list_item as direct node type
+        case 'ordered_list_item':
+            if (!node.content) return '';
+            const orderedContent = node.content.map(n => {
+                if (n.type === 'paragraph') {
+                    return processInlineContent(n.content);
+                }
+                return processNode(n);
+            }).join('\n  ');
+            // Without context of list position, default to 1
+            return '1. ' + orderedContent;
+
+        case 'codeBlock':
+        case 'code_block':
+            // Heptabase uses 'params' instead of 'language'
+            const language = node.attrs?.params || node.attrs?.language || '';
+            const code = processInlineContent(node.content);
+            return '```' + language + '\n' + code + '\n```';
+
+        case 'blockquote':
+            const quoteContent = node.content?.map(n => processNode(n)).join('\n') || '';
+            return quoteContent.split('\n').map(line => '> ' + line).join('\n');
+
+        case 'horizontalRule':
+        case 'horizontal_rule':
+            return '---';
+
+        case 'hardBreak':
+        case 'hard_break':
+            return '  \n';
+
+        case 'image':
+            const src = node.attrs?.src || '';
+            const alt = node.attrs?.alt || '';
+            const title = node.attrs?.title || '';
+            return title ? `![${alt}](${src} "${title}")` : `![${alt}](${src})`;
+
+        // Math formulas
+        case 'math_display':
+            const displayMath = processInlineContent(node.content);
+            return '$$\n' + displayMath + '\n$$';
+
+        case 'math_inline':
+            const inlineMath = processInlineContent(node.content);
+            return '$' + inlineMath + '$';
+
+        // Toggle list (treat as bullet list)
+        case 'toggle_list_item':
+            if (!node.content) return '';
+            const toggleContent = node.content.map(n => {
+                if (n.type === 'paragraph') {
+                    return processInlineContent(n.content);
+                }
+                return processNode(n);
+            }).join('\n  ');
+            return '- ' + toggleContent;
+
+        // Tables
+        case 'table':
+            if (!node.content) return '';
+            const rows = node.content.map(row => processNode(row));
+            // Add separator after header
+            if (rows.length > 0) {
+                const headerCells = node.content[0]?.content?.length || 1;
+                const separator = '| ' + Array(headerCells).fill('---').join(' | ') + ' |';
+                rows.splice(1, 0, separator);
+            }
+            return rows.join('\n');
+
+        case 'table_row':
+            if (!node.content) return '';
+            const cells = node.content.map(cell => processNode(cell));
+            return '| ' + cells.join(' | ') + ' |';
+
+        case 'table_header':
+        case 'table_cell':
+            return processInlineContent(node.content);
+
+        // Card reference (embedded card)
+        case 'card':
+            const cardId = node.attrs?.cardId;
+            if (cardId) {
+                const referencedCard = findCard(cardId);
+                if (referencedCard) {
+                    return `[[${referencedCard.title}]]`;
+                }
+            }
+            return '';
+
+        // PDF card
+        case 'pdf_card':
+            const pdfTitle = node.attrs?.title || 'PDF Document';
+            return `[${pdfTitle}]`;
+
+        // Embed
+        case 'embed':
+            const embedUrl = node.attrs?.src || node.attrs?.url || '';
+            return embedUrl ? `[Embedded content](${embedUrl})` : '[Embedded content]';
+
+        // Section (treat as heading)
+        case 'section':
+            if (!node.content) return '';
+            return node.content.map(n => processNode(n)).join('\n\n');
+
+        default:
+            // For unknown types, try to process content if it exists
+            if (node.content) {
+                return node.content.map(n => processNode(n)).join('');
+            }
+            return '';
+    }
+}
+
+/**
+ * Process bullet list item
+ */
+function processBulletItem(item) {
+    if (!item || !item.content) return '';
+
+    const content = item.content.map(node => {
+        if (node.type === 'paragraph') {
+            return processInlineContent(node.content);
+        }
+        return processNode(node);
+    }).join('\n  ');
+
+    return '- ' + content;
+}
+
+/**
+ * Process ordered list item
+ */
+function processOrderedItem(item, number) {
+    if (!item || !item.content) return '';
+
+    const content = item.content.map(node => {
+        if (node.type === 'paragraph') {
+            return processInlineContent(node.content);
+        }
+        return processNode(node);
+    }).join('\n  ');
+
+    return `${number}. ${content}`;
+}
+
+/**
+ * Process inline content (text with marks)
+ */
+function processInlineContent(content) {
+    if (!content || !Array.isArray(content)) {
+        return '';
+    }
+
+    return content.map(node => {
+        if (node.type === 'text') {
+            let text = node.text || '';
+
+            // Apply marks (formatting)
+            if (node.marks && node.marks.length > 0) {
+                for (const mark of node.marks) {
+                    switch (mark.type) {
+                        case 'bold':
+                        case 'strong':
+                            text = `**${text}**`;
+                            break;
+                        case 'italic':
+                        case 'em':
+                            text = `*${text}*`;
+                            break;
+                        case 'code':
+                            text = `\`${text}\``;
+                            break;
+                        case 'strike':
+                            text = `~~${text}~~`;
+                            break;
+                        case 'link':
+                            const href = mark.attrs?.href || '';
+                            text = `[${text}](${href})`;
+                            break;
+                        case 'underline':
+                            // Markdown doesn't have native underline, use HTML
+                            text = `<u>${text}</u>`;
+                            break;
+                        case 'color':
+                            // Handle text color or background color
+                            const colorType = mark.attrs?.type;
+                            const color = mark.attrs?.color;
+                            if (colorType === 'background' && color) {
+                                // Use HTML mark tag for highlighting
+                                text = `<mark style="background-color: ${color}">${text}</mark>`;
+                            } else if (color) {
+                                text = `<span style="color: ${color}">${text}</span>`;
+                            }
+                            break;
+                        case 'highlight_element':
+                            // Simple highlight
+                            text = `==${text}==`;
+                            break;
+                        case 'date':
+                            // Keep date as-is, possibly with formatting
+                            break;
+                    }
+                }
+            }
+
+            return text;
+        } else if (node.type === 'hardBreak') {
+            return '  \n';
+        } else {
+            // Handle other inline node types
+            return processNode(node);
+        }
+    }).join('');
+}
+
+/**
  * Process cards and convert card references to wiki links
  */
 function processCards() {
@@ -98,19 +407,15 @@ function processCards() {
             continue;
         }
 
-        // Handle forward slashes in title
-        let title = card.title;
-        if (title.includes('/')) {
-            title = title.replace(/\//g, '!');
-        }
-
         // Skip empty titles
-        if (title === '') {
+        if (!card.title || card.title.trim() === '') {
             continue;
         }
 
+        // Convert ProseMirror JSON to Markdown
+        let content = prosemirrorToMarkdown(card.content);
+
         // Replace card references with wiki links
-        let content = card.content;
         const matches = content.matchAll(pattern);
 
         for (let match of matches) {
@@ -122,8 +427,11 @@ function processCards() {
             }
         }
 
+        // Sanitize filename
+        const safeTitle = sanitizeFilename(card.title);
+
         markdownList.push({
-            filename: `${title}.md`,
+            filename: `${safeTitle}.md`,
             content: content
         });
     }
@@ -183,10 +491,8 @@ function createCanvas(whiteboard, cardsPath) {
         const card = findCard(node.cardId);
         if (!card) continue;
 
-        let title = card.title;
-        if (title.includes('/')) {
-            title = title.replace(/\//g, '!');
-        }
+        // Use sanitized filename
+        const safeTitle = sanitizeFilename(card.title);
 
         result.nodes.push({
             id: generateId(),
@@ -195,7 +501,7 @@ function createCanvas(whiteboard, cardsPath) {
             width: node.width,
             height: node.height - 30,
             type: 'file',
-            file: `${cardsPath}${title}.md`
+            file: `${cardsPath}${safeTitle}.md`
         });
     }
 

@@ -74,6 +74,10 @@ To deploy:
 - Default path is `Cards/` - adjust based on your folder structure
 - Canvas files reference the card Markdown files, so export both for full functionality
 
+## Acknowledgments
+
+This project is inspired by and references [Heptabase-Export](https://github.com/link-ding/Heptabase-Export) by link-ding.
+
 ## License
 
 Free to use and modify for personal or commercial purposes.
