@@ -2,77 +2,21 @@
 
 A pure frontend web application to export your data from Heptabase to Obsidian format.
 
-## Features
+## Site
 
-- 🎯 **Pure Frontend** - No server required, all processing happens in your browser
-- 🔒 **Privacy First** - Your data never leaves your computer
-- 📝 **Card Export** - Convert Heptabase cards to Markdown files with wiki links
-- 🎨 **Canvas Export** - Convert Heptabase whiteboards to Obsidian Canvas format
-- 🚀 **Fast & Easy** - Simple drag-and-drop interface
+<https://heptabase-obsidian-migrate.wildsky.cc/>
 
-## Usage
+## Why This Project?
 
-1. Open `index.html` in your web browser
-2. Upload your `All-Data.json` file from your Heptabase export folder
-3. Configure the Cards Path (default: `Cards/`)
-4. Click **Download Cards** to export all cards as Markdown files
-5. Click **Download Canvas** to export all whiteboards as Obsidian Canvas files
+This project was created to provide a maintained and accessible alternative for Heptabase users:
 
-## What Gets Converted
+1. **Original service unavailable**: The original project's web service at https://link-ding-heptabase-export-app-revtm6.streamlit.app/ is no longer accessible
+2. **Maintenance status**: The original project was last maintained 4 years ago (as of this writing), and may not support newer Heptabase features
 
-### Cards Export
-- ✅ All non-trashed cards
-- ✅ Card references (`{{card uuid}}`) converted to wiki links (`[[Card Title]]`)
-- ✅ Forward slashes in titles replaced with exclamation marks
-- ✅ Empty titles skipped automatically
-
-### Canvas Export
-- ✅ Whiteboard structure preserved
-- ✅ Card positions and sizes
-- ✅ Sections/groups with labels
-- ✅ Connections between cards with direction detection
-- ✅ Proper file references to exported cards
-
-## Technical Details
-
-- **No dependencies** - Uses vanilla JavaScript
-- **JSZip** - For creating ZIP archives
-- **Modern Web APIs** - FileReader, Blob, crypto.getRandomValues
-- **Responsive Design** - Works on desktop and mobile
-
-## Browser Requirements
-
-- Modern browser with ES6 support (Chrome, Firefox, Safari, Edge)
-- JavaScript enabled
-- No internet connection required after initial page load
-
-## File Structure
-
-```
-hepta-export-tool/
-├── index.html    # Main application page
-├── style.css     # Styling
-├── app.js        # Application logic
-└── README.md     # This file
-```
-
-## Development
-
-To run locally:
-
-1. Clone or download this folder
-2. Open `index.html` in your browser
-3. No build process required!
-
-To deploy:
-- Upload to any static hosting (GitHub Pages, Netlify, Vercel, etc.)
-- Or use as a local HTML file
-
-## Notes
-
-- The Cards Path should be relative to your Obsidian vault root
-- Default path is `Cards/` - adjust based on your folder structure
-- Canvas files reference the card Markdown files, so export both for full functionality
+This rewrite aims to:
+- Provide a reliable, always-available tool (pure frontend, no server dependencies)
+- Support modern Heptabase features and data structures
+- Ensure your data stays private by processing everything locally in your browser
 
 ## Acknowledgments
 
@@ -80,8 +24,14 @@ This project is inspired by and references [Heptabase-Export](https://github.com
 
 ## License
 
-Free to use and modify for personal or commercial purposes.
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
----
+### Third-Party Licenses
 
-Made with ❤️ for Heptabase and Obsidian users
+This project is inspired by and references code from [Heptabase-Export](https://github.com/link-ding/Heptabase-Export), which is licensed under the Apache License 2.0. The full text of the Apache License 2.0 and attribution to the original author can be found in the [NOTICE](NOTICE) file.
+
+In accordance with the Apache License 2.0 requirements:
+- The original copyright notice and license have been preserved
+- Changes and modifications have been documented
+- This derivative work is provided under the MIT License
+
