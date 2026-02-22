@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Heptabase to Obsidian Converter</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Heptabase data to Obsidian Canvas</h1>
+            <p class="subtitle">This is a Web APP to export your Data from Heptabase to Obsidian, follow the instruction below to use.</p>
+        </header>
+
+        <section class="instructions">
+            <ol>
+                <li>Upload your <code>All-Data.json</code> file. This file is in your Heptabase export folder.</li>
+                <li>After you upload the file, there will be two download buttons:
+                    <ul>
+                        <li><strong>Download Cards</strong> button will export all your cards in Heptabase to Markdown files with clean wiki link <code>[[]]</code>.</li>
+                        <li><strong>Download Canvas</strong> button will export all your whiteboards in Heptabase to Obsidian Canvas files. You should set the Cards Path which is the cards' relative path to your Obsidian vault. The default path is <code>Cards/</code></li>
+                    </ul>
+                </li>
+            </ol>
+        </section>
+
+        <section class="upload-section">
+            <div class="file-input-wrapper">
+                <label for="fileInput" class="file-label">
+                    <span id="fileInputLabel">Choose All-Data.json file</span>
+                </label>
+                <input type="file" id="fileInput" accept=".json" />
+            </div>
+            <div id="fileName" class="file-name"></div>
+        </section>
+
+        <section id="downloadSection" class="download-section hidden">
+            <div class="cards-path-input">
+                <label for="cardsPath">Cards Path:</label>
+                <input type="text" id="cardsPath" value="Cards/" placeholder="Cards/" />
+                <small>Relative path from your Obsidian vault to cards folder</small>
+            </div>
+
+            <div class="button-group">
+                <button id="downloadCardsBtn" class="btn btn-primary">
+                    <span class="btn-icon">📥</span>
+                    Download Cards
+                </button>
+                <button id="downloadCanvasBtn" class="btn btn-secondary">
+                    <span class="btn-icon">🎨</span>
+                    Download Canvas
+                </button>
+            </div>
+
+            <div id="status" class="status"></div>
+        </section>
+
+        <footer>
+            <p>Made with ❤️ for Heptabase and Obsidian users</p>
+        </footer>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
